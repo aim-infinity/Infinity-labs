@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Mode Button</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    @property --angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    @keyframes spin-border {
+      to { --angle: 360deg; }
+    }
+
+    .ai-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+
+      height: 41px;
+      padding: 0 18px;
+      border-radius: 60px;
+      border: 2px solid transparent;
+      background-color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+
+      /* default: #F6F6F6 fill, no visible border */
+      background-image:
+        linear-gradient(#F6F6F6, #F6F6F6),
+        linear-gradient(transparent, transparent);
+      background-origin: padding-box, border-box;
+      background-clip: padding-box, border-box;
+
+      animation: none;
+      box-shadow: none;
+      transition: box-shadow 0.25s ease;
+    }
+
+    .ai-btn:hover {
+      /*
+       * Blue dominates ~120° of the arc (matches Figma node 4:133).
+       * Red, yellow, green follow as short trailing slices.
+       * ~130° transparent gap creates the comet tail effect.
+       */
+      background-image:
+        linear-gradient(#ffffff, #ffffff),
+        conic-gradient(
+          from var(--angle),
+          transparent 0deg,
+          transparent 40deg,
+          #4285F4 75deg,
+          #4285F4 195deg,
+          #EA4335 225deg,
+          #FBBC04 248deg,
+          #34A853 268deg,
+          transparent 305deg,
+          transparent 360deg
+        );
+      background-origin: padding-box, border-box;
+      background-clip: padding-box, border-box;
+
+      animation: spin-border 2.4s linear infinite;
+      box-shadow: 0 2px 10px rgba(0,0,0,.10), 0 4px 20px rgba(66,133,244,.18);
+    }
+
+    .ai-btn__icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .ai-btn__label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      color: #000;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <button class="ai-btn">
+    <img
+      class="ai-btn__icon"
+      src="https://www.figma.com/api/mcp/asset/24fa227a-336f-41ea-8db6-803890141731"
+      alt="AI search spark"
+    />
+    <span class="ai-btn__label">AI Mode</span>
+  </button>
+
+</body>
+</html>
