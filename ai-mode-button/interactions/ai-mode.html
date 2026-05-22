@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Mode Button · Interactions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="ai-mode.css" />
+</head>
+<body>
+
+  <!-- Top bar -->
+  <nav class="topbar">
+    <a class="back-btn" href="../index.html">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M9 2.5L4.5 7L9 11.5" stroke="currentColor" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </a>
+    <span class="topbar__sep">/</span>
+    <span class="topbar__crumb">Interactions</span>
+    <span class="topbar__sep">/</span>
+    <span class="topbar__crumb topbar__crumb--active">AI Mode Button</span>
+  </nav>
+
+  <div class="top-tabs" role="tablist" aria-label="Page sections">
+    <button class="top-tab top-tab--active" data-top-tab="explanation" onclick="switchTopTab('explanation')">
+      Explanation
+    </button>
+    <button class="top-tab" data-top-tab="builder" onclick="switchTopTab('builder')">
+      Code + Preview
+    </button>
+  </div>
+
+  <section class="how-it-works view-panel view-panel--active" data-view-panel="explanation" aria-label="How this AI mode button was built">
+    <div class="how-it-works__inner">
+      <h2 class="how-it-works__title">How We Built This AI Mode Button</h2>
+      <p class="how-it-works__intro">
+        This component is made using layered CSS backgrounds. The button itself stays simple, and we animate only the border gradient on hover.
+      </p>
+
+      <article class="how-it-works__step">
+        <h3>1) We started with a normal pill button</h3>
+        <p>
+          First we made a regular rounded button with icon + label. This gives us a clean base before adding effects.
+        </p>
+        <pre class="how-it-works__code"><code>&lt;button class="ai-btn"&gt;
+  &lt;img class="ai-btn__icon" src="search_spark.png" alt="AI search spark" /&gt;
+  &lt;span class="ai-btn__label"&gt;AI Mode&lt;/span&gt;
+&lt;/button&gt;</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>2) We used two background layers</h3>
+        <p>
+          One background paints the inner fill, and the second background paints the border area.
+          This lets us animate the border without affecting button content.
+        </p>
+        <pre class="how-it-works__code"><code>.ai-btn {
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(#F6F6F6, #F6F6F6),
+    linear-gradient(transparent, transparent);
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+}</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>3) We animated the border with a conic gradient</h3>
+        <p>
+          On hover, we replace the border layer with a conic gradient and rotate it.
+          The center fill remains stable, while the border appears to orbit around the button.
+        </p>
+        <pre class="how-it-works__code"><code>@property --angle {
+  syntax: '&lt;angle&gt;';
+  initial-value: 0deg;
+}
+
+@keyframes spin-border {
+  to { --angle: 360deg; }
+}
+
+.ai-btn:hover {
+  background-image:
+    linear-gradient(#fff, #fff),
+    conic-gradient(from var(--angle), ...);
+  animation: spin-border 2.4s linear infinite;
+}</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>4) We added subtle depth on hover</h3>
+        <p>
+          A light shadow is applied only on hover. This makes the animation feel more alive but still clean.
+        </p>
+        <pre class="how-it-works__code"><code>.ai-btn:hover {
+  box-shadow:
+    0 2px 10px rgba(0,0,0,.10),
+    0 4px 20px rgba(66,133,244,.18);
+}</code></pre>
+      </article>
+    </div>
+  </section>
+
+  <!-- Split layout -->
+  <div class="split view-panel" data-view-panel="builder">
+
+    <!-- Left: Code -->
+    <div class="code-panel">
+      <div class="code-panel__header">
+        <div class="code-panel__tabs">
+          <button class="code-tab code-tab--active" onclick="switchTab('html')">HTML</button>
+          <button class="code-tab" onclick="switchTab('css')">CSS</button>
+          <button class="code-tab" onclick="switchTab('js')">JS</button>
+        </div>
+        <button class="copy-btn" id="copyBtn" onclick="copyCode()">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="4.5" y="4.5" width="7" height="7" rx="1.5"
+              stroke="currentColor" stroke-width="1.2"/>
+            <path d="M3 8.5H2C1.45 8.5 1 8.05 1 7.5V2C1 1.45 1.45 1 2 1H7.5
+              C8.05 1 8.5 1.45 8.5 2V3" stroke="currentColor" stroke-width="1.2"
+              stroke-linecap="round"/>
+          </svg>
+          Copy
+        </button>
+      </div>
+      <div class="code-panel__body">
+
+        <!-- HTML tab -->
+        <pre class="code-block code-block--active" id="block-html"
+><span class="ln">1</span><span class="t-tag">&lt;button</span> <span class="t-attr">class</span>=<span class="t-val">"ai-btn"</span><span class="t-tag">&gt;</span>
+<span class="ln">2</span>  <span class="t-tag">&lt;img</span>
+<span class="ln">3</span>    <span class="t-attr">class</span>=<span class="t-val">"ai-btn__icon"</span>
+<span class="ln">4</span>    <span class="t-attr">src</span>=<span class="t-val">"search_spark.png"</span>
+<span class="ln">5</span>    <span class="t-attr">alt</span>=<span class="t-val">"AI search spark"</span>
+<span class="ln">6</span>  <span class="t-tag">/&gt;</span>
+<span class="ln">7</span>  <span class="t-tag">&lt;span</span> <span class="t-attr">class</span>=<span class="t-val">"ai-btn__label"</span><span class="t-tag">&gt;</span>AI Mode<span class="t-tag">&lt;/span&gt;</span>
+<span class="ln">8</span><span class="t-tag">&lt;/button&gt;</span></pre>
+
+        <!-- CSS tab -->
+        <pre class="code-block" id="block-css"
+><span class="ln"> 1</span><span class="t-at">@property</span> <span class="t-sel">--angle</span> <span class="t-tag">{</span>
+<span class="ln"> 2</span>  <span class="t-prop">syntax</span>: <span class="t-val">'&lt;angle&gt;'</span>;
+<span class="ln"> 3</span>  <span class="t-prop">initial-value</span>: <span class="t-num">0deg</span>;
+<span class="ln"> 4</span>  <span class="t-prop">inherits</span>: <span class="t-val">false</span>;
+<span class="ln"> 5</span><span class="t-tag">}</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span><span class="t-at">@keyframes</span> <span class="t-sel">spin-border</span> <span class="t-tag">{</span>
+<span class="ln"> 8</span>  <span class="t-sel">to</span> <span class="t-tag">{</span> <span class="t-prop">--angle</span>: <span class="t-num">360deg</span>; <span class="t-tag">}</span>
+<span class="ln"> 9</span><span class="t-tag">}</span>
+<span class="ln">10</span>
+<span class="ln">11</span><span class="t-sel">.ai-btn</span> <span class="t-tag">{</span>
+<span class="ln">12</span>  <span class="t-prop">display</span>: <span class="t-val">inline-flex</span>;
+<span class="ln">13</span>  <span class="t-prop">align-items</span>: <span class="t-val">center</span>;
+<span class="ln">14</span>  <span class="t-prop">gap</span>: <span class="t-num">8px</span>;
+<span class="ln">15</span>  <span class="t-prop">height</span>: <span class="t-num">41px</span>;
+<span class="ln">16</span>  <span class="t-prop">padding</span>: <span class="t-num">0 18px</span>;
+<span class="ln">17</span>  <span class="t-prop">border-radius</span>: <span class="t-num">60px</span>;
+<span class="ln">18</span>  <span class="t-prop">border</span>: <span class="t-num">2px</span> <span class="t-val">solid transparent</span>;
+<span class="ln">19</span>  <span class="t-prop">cursor</span>: <span class="t-val">pointer</span>;
+<span class="ln">20</span>  <span class="t-prop">background-image</span>:
+<span class="ln">21</span>    <span class="t-val">linear-gradient(#F6F6F6, #F6F6F6)</span>,
+<span class="ln">22</span>    <span class="t-val">linear-gradient(transparent, transparent)</span>;
+<span class="ln">23</span>  <span class="t-prop">background-origin</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">24</span>  <span class="t-prop">background-clip</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">25</span>  <span class="t-prop">animation</span>: <span class="t-val">none</span>;
+<span class="ln">26</span><span class="t-tag">}</span>
+<span class="ln">27</span>
+<span class="ln">28</span><span class="t-sel">.ai-btn:hover</span> <span class="t-tag">{</span>
+<span class="ln">29</span>  <span class="t-prop">background-image</span>:
+<span class="ln">30</span>    <span class="t-val">linear-gradient(#fff, #fff)</span>,
+<span class="ln">31</span>    <span class="t-val">conic-gradient(</span>
+<span class="ln">32</span>      <span class="t-val">from var(--angle)</span>,
+<span class="ln">33</span>      <span class="t-val">transparent   0deg</span>,
+<span class="ln">34</span>      <span class="t-val">transparent  40deg</span>,
+<span class="ln">35</span>      <span class="t-num">#4285F4</span>       <span class="t-val">75deg</span>,  <span class="t-cmt">/* blue   */</span>
+<span class="ln">36</span>      <span class="t-num">#4285F4</span>      <span class="t-val">195deg</span>,  <span class="t-cmt">/* blue   */</span>
+<span class="ln">37</span>      <span class="t-num">#EA4335</span>      <span class="t-val">225deg</span>,  <span class="t-cmt">/* red    */</span>
+<span class="ln">38</span>      <span class="t-num">#FBBC04</span>      <span class="t-val">248deg</span>,  <span class="t-cmt">/* yellow */</span>
+<span class="ln">39</span>      <span class="t-num">#34A853</span>      <span class="t-val">268deg</span>,  <span class="t-cmt">/* green  */</span>
+<span class="ln">40</span>      <span class="t-val">transparent 305deg</span>,
+<span class="ln">41</span>      <span class="t-val">transparent 360deg</span>
+<span class="ln">42</span>    <span class="t-val">)</span>;
+<span class="ln">43</span>  <span class="t-prop">background-origin</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">44</span>  <span class="t-prop">background-clip</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">45</span>  <span class="t-prop">animation</span>: <span class="t-val">spin-border 2.4s linear infinite</span>;
+<span class="ln">46</span>  <span class="t-prop">box-shadow</span>:
+<span class="ln">47</span>    <span class="t-val">0 2px 10px rgba(0,0,0,.10)</span>,
+<span class="ln">48</span>    <span class="t-val">0 4px 20px rgba(66,133,244,.18)</span>;
+<span class="ln">49</span><span class="t-tag">}</span>
+<span class="ln">50</span>
+<span class="ln">51</span><span class="t-sel">.ai-btn__icon</span> <span class="t-tag">{</span>
+<span class="ln">52</span>  <span class="t-prop">width</span>: <span class="t-num">20px</span>;
+<span class="ln">53</span>  <span class="t-prop">height</span>: <span class="t-num">20px</span>;
+<span class="ln">54</span>  <span class="t-prop">display</span>: <span class="t-val">block</span>;
+<span class="ln">55</span><span class="t-tag">}</span>
+<span class="ln">56</span>
+<span class="ln">57</span><span class="t-sel">.ai-btn__label</span> <span class="t-tag">{</span>
+<span class="ln">58</span>  <span class="t-prop">font-size</span>: <span class="t-num">12px</span>;
+<span class="ln">59</span>  <span class="t-prop">font-weight</span>: <span class="t-num">400</span>;
+<span class="ln">60</span>  <span class="t-prop">color</span>: <span class="t-num">#000</span>;
+<span class="ln">61</span><span class="t-tag">}</span></pre>
+
+        <!-- JS tab -->
+        <pre class="code-block" id="block-js"
+><span class="ln">1</span><span class="t-cmt">// No JavaScript required.</span>
+<span class="ln">2</span><span class="t-cmt">// The animation is driven entirely by CSS</span>
+<span class="ln">3</span><span class="t-cmt">// using @property and conic-gradient.</span></pre>
+
+      </div>
+    </div>
+
+    <!-- Right: Playground -->
+    <div class="playground">
+      <div class="playground__header">
+        <span class="playground__label">Preview</span>
+        <span class="playground__hint">Hover the button</span>
+      </div>
+      <div class="playground__stage">
+        <button class="ai-btn">
+          <img
+            class="ai-btn__icon"
+            src="https://www.figma.com/api/mcp/asset/24fa227a-336f-41ea-8db6-803890141731"
+            alt="AI search spark"
+          />
+          <span class="ai-btn__label">AI Mode</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="ai-mode.js"></script>
+</body>
+</html>

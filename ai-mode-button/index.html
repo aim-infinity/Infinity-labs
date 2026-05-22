@@ -3,113 +3,245 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Mode Button</title>
+  <title>Interactions</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap" rel="stylesheet" />
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       min-height: 100vh;
+      background: #ffffff;
+      font-family: 'DM Sans', sans-serif;
+      color: #111;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      padding: 48px 48px 0;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header__eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    .header__title {
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: #111;
+      line-height: 1.1;
+    }
+
+    .header__desc {
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: 400;
+      color: #888;
+      line-height: 1.6;
+    }
+
+    /* ── Divider ─────────────────────────────────────────── */
+    .divider {
+      max-width: 1200px;
+      margin: 32px auto 0;
+      padding: 0 48px;
+      border: none;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    /* ── Grid ────────────────────────────────────────────── */
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 48px 64px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── Card ────────────────────────────────────────────── */
+    .card {
+      display: flex;
+      flex-direction: column;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #ebebeb;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: #d4d4d4;
+      box-shadow: 0 8px 32px rgba(0,0,0,.08);
+      transform: translateY(-2px);
+    }
+
+    /* Image / preview area */
+    .card__preview {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: #F6F6F6;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #ffffff;
-      font-family: 'DM Sans', sans-serif;
-    }
-
-    @property --angle {
-      syntax: '<angle>';
-      initial-value: 0deg;
-      inherits: false;
-    }
-
-    @keyframes spin-border {
-      to { --angle: 360deg; }
-    }
-
-    .ai-btn {
+      overflow: hidden;
       position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-
-      height: 41px;
-      padding: 0 18px;
-      border-radius: 60px;
-      border: 2px solid transparent;
-      background-color: #fff;
-      cursor: pointer;
-      white-space: nowrap;
-
-      /* default: #F6F6F6 fill, no visible border */
-      background-image:
-        linear-gradient(#F6F6F6, #F6F6F6),
-        linear-gradient(transparent, transparent);
-      background-origin: padding-box, border-box;
-      background-clip: padding-box, border-box;
-
-      animation: none;
-      box-shadow: none;
-      transition: box-shadow 0.25s ease;
     }
 
-    .ai-btn:hover {
-      /*
-       * Blue dominates ~120° of the arc (matches Figma node 4:133).
-       * Red, yellow, green follow as short trailing slices.
-       * ~130° transparent gap creates the comet tail effect.
-       */
-      background-image:
-        linear-gradient(#ffffff, #ffffff),
-        conic-gradient(
-          from var(--angle),
-          transparent 0deg,
-          transparent 40deg,
-          #4285F4 75deg,
-          #4285F4 195deg,
-          #EA4335 225deg,
-          #FBBC04 248deg,
-          #34A853 268deg,
-          transparent 305deg,
-          transparent 360deg
-        );
-      background-origin: padding-box, border-box;
-      background-clip: padding-box, border-box;
-
-      animation: spin-border 2.4s linear infinite;
-      box-shadow: 0 2px 10px rgba(0,0,0,.10), 0 4px 20px rgba(66,133,244,.18);
+    .card__preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
-    .ai-btn__icon {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-      display: block;
+    /* placeholder when no image */
+    .card__preview--empty::after {
+      content: '';
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px dashed #ccc;
     }
 
-    .ai-btn__label {
-      font-family: 'DM Sans', sans-serif;
+    /* tag badge inside preview */
+    .card__tag {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(4px);
+      color: #555;
+      border: 1px solid rgba(0,0,0,.06);
+    }
+
+    /* Info area */
+    .card__body {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card__title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #111;
+      line-height: 1.3;
+    }
+
+    .card__meta {
       font-size: 12px;
+      color: #aaa;
       font-weight: 400;
-      color: #000;
-      line-height: 1;
+    }
+
+    /* arrow icon */
+    .card__arrow {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #bbb;
+      transition: color 0.15s, gap 0.15s;
+    }
+
+    .card:hover .card__arrow {
+      color: #555;
+      gap: 7px;
+    }
+
+    /* ── Empty-state placeholder card ───────────────────── */
+    .card--placeholder {
+      border-style: dashed;
+      border-color: #e8e8e8;
+      background: transparent;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .card--placeholder .card__preview {
+      background: transparent;
     }
   </style>
 </head>
 <body>
 
-  <button class="ai-btn">
-    <img
-      class="ai-btn__icon"
-      src="https://www.figma.com/api/mcp/asset/24fa227a-336f-41ea-8db6-803890141731"
-      alt="AI search spark"
-    />
-    <span class="ai-btn__label">AI Mode</span>
-  </button>
+  <header>
+    <p class="header__eyebrow">Design × Code</p>
+    <h1 class="header__title">Interactions</h1>
+    <p class="header__desc">A collection of UI interactions built from Figma designs.</p>
+  </header>
+
+  <hr class="divider" />
+
+  <div class="grid" id="grid">
+
+    <!-- ── AI Mode Button ─────────────────────────────── -->
+    <a class="card" href="interactions/ai-mode.html">
+      <div class="card__preview card__preview--empty">
+        <span class="card__tag">Button</span>
+        <!-- swap src when image is ready: <img src="..." alt="AI Mode Button preview" /> -->
+      </div>
+      <div class="card__body">
+        <p class="card__title">AI Mode Button</p>
+        <p class="card__meta">Animated gradient border on hover</p>
+        <span class="card__arrow">
+          View interaction
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2.5 6H9.5M6.5 3L9.5 6L6.5 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- ── Chat Input Shimmer ────────────────────────── -->
+    <a class="card" href="interactions/chat-input.html">
+      <div class="card__preview card__preview--empty">
+        <span class="card__tag">Input</span>
+      </div>
+      <div class="card__body">
+        <p class="card__title">Chat Input Shimmer</p>
+        <p class="card__meta">Rotating gradient border + blur glow on focus</p>
+        <span class="card__arrow">
+          View interaction
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2.5 6H9.5M6.5 3L9.5 6L6.5 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- ── Placeholder (future interactions) ─────────── -->
+    <div class="card card--placeholder">
+      <div class="card__preview card__preview--empty"></div>
+      <div class="card__body">
+        <p class="card__title">Coming soon</p>
+        <p class="card__meta">—</p>
+      </div>
+    </div>
+
+  </div>
 
 </body>
 </html>

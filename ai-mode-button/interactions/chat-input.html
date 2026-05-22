@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Input Shimmer · Interactions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Inter:wght@400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="chat-input.css" />
+</head>
+<body>
+
+  <!-- Top bar -->
+  <nav class="topbar">
+    <a class="back-btn" href="../index.html">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M9 2.5L4.5 7L9 11.5" stroke="currentColor" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </a>
+    <span class="topbar__sep">/</span>
+    <span class="topbar__crumb">Interactions</span>
+    <span class="topbar__sep">/</span>
+    <span class="topbar__crumb topbar__crumb--active">Chat Input Shimmer</span>
+  </nav>
+
+  <div class="top-tabs" role="tablist" aria-label="Page sections">
+    <button class="top-tab top-tab--active" data-top-tab="explanation" onclick="switchTopTab('explanation')">
+      Explanation
+    </button>
+    <button class="top-tab" data-top-tab="builder" onclick="switchTopTab('builder')">
+      Code + Preview
+    </button>
+  </div>
+
+  <section class="how-it-works view-panel view-panel--active" data-view-panel="explanation" aria-label="How this shimmer component works">
+    <div class="how-it-works__inner">
+      <h2 class="how-it-works__title">How We Built This Component</h2>
+      <p class="how-it-works__intro">
+        We built this like a layered design system. Each layer does one simple job, and together they create the final shimmer look.
+      </p>
+
+      <article class="how-it-works__step">
+        <h3>1) We created the base chat container</h3>
+        <p>
+          First, we made the regular chat box shape. This is the stable layout that holds textarea, chip, and send button.
+          Think of this as the "canvas" for all animation layers.
+        </p>
+        <pre class="how-it-works__code"><code>.chat-wrap {
+  position: relative;
+  width: 450px;
+  height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+}</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>2) We added an animated gradient border ring</h3>
+        <p>
+          The colorful border is a rotating conic gradient. We use a mask so only the ring is visible, not the full box fill.
+        </p>
+        <pre class="how-it-works__code"><code>@keyframes shimmer-spin {
+  to { --shimmer-angle: 360deg; }
+}
+
+.gradient-ring {
+  background: conic-gradient(from var(--shimmer-angle), ...);
+  animation: shimmer-spin 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+}</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>3) We added inner shimmer as a separate layer</h3>
+        <p>
+          To avoid breaking border animation, inner shimmer is isolated in <code>.chat-inner::before</code>.
+          It has its own animation angle and moving mask, so both effects can run independently.
+        </p>
+        <pre class="how-it-works__code"><code>@property --inner-shimmer-angle {
+  syntax: '&lt;angle&gt;';
+  initial-value: 0deg;
+}
+
+.chat-inner::before {
+  background: radial-gradient(...), radial-gradient(...);
+  -webkit-mask-image: conic-gradient(from var(--inner-shimmer-angle), ...);
+  animation: inner-shimmer-spin 3.2s linear infinite;
+}</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>4) We controlled visibility with state classes</h3>
+        <p>
+          JavaScript adds and removes classes based on focus/input/blur. This turns shimmer on while interacting,
+          then softly cools it down instead of instantly removing it.
+        </p>
+        <pre class="how-it-works__code"><code>textarea.addEventListener('focus', activateBeam);
+textarea.addEventListener('input', activateBeam);
+textarea.addEventListener('blur', () =&gt; {
+  setTimeout(() =&gt; fadeBeam(), 700);
+});</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>5) Final principle we followed</h3>
+        <p>
+          <strong>Do not couple animations.</strong> Border and inner shimmer use separate variables and layers.
+          That keeps the component stable, easy to tune, and easier to debug.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Split layout -->
+  <div class="split view-panel" data-view-panel="builder">
+
+    <!-- Left: Code -->
+    <div class="code-panel">
+      <div class="code-panel__header">
+        <div class="code-panel__tabs">
+          <button class="code-tab code-tab--active" onclick="switchTab('html')">HTML</button>
+          <button class="code-tab" onclick="switchTab('css')">CSS</button>
+          <button class="code-tab" onclick="switchTab('js')">JS</button>
+        </div>
+        <button class="copy-btn" id="copyBtn" onclick="copyCode()">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="4.5" y="4.5" width="7" height="7" rx="1.5"
+              stroke="currentColor" stroke-width="1.2"/>
+            <path d="M3 8.5H2C1.45 8.5 1 8.05 1 7.5V2C1 1.45 1.45 1 2 1H7.5
+              C8.05 1 8.5 1.45 8.5 2V3" stroke="currentColor" stroke-width="1.2"
+              stroke-linecap="round"/>
+          </svg>
+          Copy
+        </button>
+      </div>
+      <div class="code-panel__body">
+
+        <!-- HTML tab -->
+        <pre class="code-block code-block--active" id="block-html"
+><span class="ln"> 1</span><span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"chat-outer"</span><span class="t-tag">&gt;</span>
+<span class="ln"> 2</span>
+<span class="ln"> 3</span>  <span class="t-cmt">&lt;!-- Sharp gradient border box --&gt;</span>
+<span class="ln"> 4</span>  <span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"chat-box"</span><span class="t-tag">&gt;</span>
+<span class="ln"> 5</span>    <span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"chat-inner"</span><span class="t-tag">&gt;</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span>      <span class="t-tag">&lt;textarea</span>
+<span class="ln"> 8</span>        <span class="t-attr">class</span>=<span class="t-val">"chat-textarea"</span>
+<span class="ln"> 9</span>        <span class="t-attr">placeholder</span>=<span class="t-val">"Type your message..."</span>
+<span class="ln">10</span>        <span class="t-attr">rows</span>=<span class="t-val">"2"</span>
+<span class="ln">11</span>      <span class="t-tag">&gt;&lt;/textarea&gt;</span>
+<span class="ln">12</span>
+<span class="ln">13</span>      <span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"chat-row"</span><span class="t-tag">&gt;</span>
+<span class="ln">14</span>        <span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"chat-chip"</span><span class="t-tag">&gt;</span>
+<span class="ln">15</span>          <span class="t-tag">&lt;span</span> <span class="t-attr">class</span>=<span class="t-val">"chat-chip__label"</span><span class="t-tag">&gt;</span>Research mode<span class="t-tag">&lt;/span&gt;</span>
+<span class="ln">16</span>          <span class="t-tag">&lt;span</span> <span class="t-attr">class</span>=<span class="t-val">"chat-chip__close"</span><span class="t-tag">&gt;</span>
+<span class="ln">17</span>            <span class="t-tag">&lt;svg</span> <span class="t-attr">width</span>=<span class="t-val">"10"</span> <span class="t-attr">height</span>=<span class="t-val">"10"</span> <span class="t-attr">viewBox</span>=<span class="t-val">"0 0 10 10"</span> <span class="t-attr">fill</span>=<span class="t-val">"none"</span><span class="t-tag">&gt;</span>
+<span class="ln">18</span>              <span class="t-tag">&lt;path</span> <span class="t-attr">d</span>=<span class="t-val">"M2 2L8 8M8 2L2 8"</span>
+<span class="ln">19</span>                <span class="t-attr">stroke</span>=<span class="t-val">"currentColor"</span> <span class="t-attr">stroke-width</span>=<span class="t-val">"1.4"</span>
+<span class="ln">20</span>                <span class="t-attr">stroke-linecap</span>=<span class="t-val">"round"</span><span class="t-tag">/&gt;</span>
+<span class="ln">21</span>            <span class="t-tag">&lt;/svg&gt;</span>
+<span class="ln">22</span>          <span class="t-tag">&lt;/span&gt;</span>
+<span class="ln">23</span>        <span class="t-tag">&lt;/div&gt;</span>
+<span class="ln">24</span>        <span class="t-tag">&lt;button</span> <span class="t-attr">class</span>=<span class="t-val">"chat-send"</span><span class="t-tag">&gt;</span>
+<span class="ln">25</span>          <span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"chat-send__icon"</span><span class="t-tag">&gt;&lt;/div&gt;</span>
+<span class="ln">26</span>        <span class="t-tag">&lt;/button&gt;</span>
+<span class="ln">27</span>      <span class="t-tag">&lt;/div&gt;</span>
+<span class="ln">28</span>
+<span class="ln">29</span>    <span class="t-tag">&lt;/div&gt;</span>
+<span class="ln">30</span>  <span class="t-tag">&lt;/div&gt;</span>
+<span class="ln">31</span>
+<span class="ln">32</span><span class="t-tag">&lt;/div&gt;</span></pre>
+
+        <!-- CSS tab -->
+        <pre class="code-block" id="block-css"
+><span class="ln"> 1</span><span class="t-at">@property</span> <span class="t-sel">--shimmer-angle</span> <span class="t-tag">{</span>
+<span class="ln"> 2</span>  <span class="t-prop">syntax</span>: <span class="t-val">'&lt;angle&gt;'</span>;
+<span class="ln"> 3</span>  <span class="t-prop">initial-value</span>: <span class="t-num">0deg</span>;
+<span class="ln"> 4</span>  <span class="t-prop">inherits</span>: <span class="t-val">false</span>;
+<span class="ln"> 5</span><span class="t-tag">}</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span><span class="t-at">@keyframes</span> <span class="t-sel">shimmer-spin</span> <span class="t-tag">{</span>
+<span class="ln"> 8</span>  <span class="t-sel">to</span> <span class="t-tag">{</span> <span class="t-prop">--shimmer-angle</span>: <span class="t-num">360deg</span>; <span class="t-tag">}</span>
+<span class="ln"> 9</span><span class="t-tag">}</span>
+<span class="ln">10</span>
+<span class="ln">11</span><span class="t-cmt">/* Outer wrapper: stacking context for glow */</span>
+<span class="ln">12</span><span class="t-sel">.chat-outer</span> <span class="t-tag">{</span>
+<span class="ln">13</span>  <span class="t-prop">position</span>: <span class="t-val">relative</span>;
+<span class="ln">14</span>  <span class="t-prop">width</span>: <span class="t-num">450px</span>;
+<span class="ln">15</span>  <span class="t-prop">border-radius</span>: <span class="t-num">14px</span>;
+<span class="ln">16</span>  <span class="t-prop">isolation</span>: <span class="t-val">isolate</span>;
+<span class="ln">17</span><span class="t-tag">}</span>
+<span class="ln">18</span>
+<span class="ln">19</span><span class="t-cmt">/* Layer 1: blurred glow behind the box */</span>
+<span class="ln">20</span><span class="t-sel">.chat-outer::before</span> <span class="t-tag">{</span>
+<span class="ln">21</span>  <span class="t-prop">content</span>: <span class="t-val">''</span>;
+<span class="ln">22</span>  <span class="t-prop">position</span>: <span class="t-val">absolute</span>;
+<span class="ln">23</span>  <span class="t-prop">inset</span>: <span class="t-num">-5px</span>;
+<span class="ln">24</span>  <span class="t-prop">border-radius</span>: <span class="t-num">17px</span>;
+<span class="ln">25</span>  <span class="t-prop">background</span>: <span class="t-fn">conic-gradient</span>(
+<span class="ln">26</span>    <span class="t-val">from var(--shimmer-angle)</span>,
+<span class="ln">27</span>    <span class="t-num">#4F8EFF</span>, <span class="t-num">#A855F7</span>, <span class="t-num">#F472B6</span>, <span class="t-num">#FB7185</span>, <span class="t-num">#4F8EFF</span>
+<span class="ln">28</span>  );
+<span class="ln">29</span>  <span class="t-prop">filter</span>: <span class="t-fn">blur</span>(<span class="t-num">14px</span>);
+<span class="ln">30</span>  <span class="t-prop">opacity</span>: <span class="t-num">0</span>;
+<span class="ln">31</span>  <span class="t-prop">z-index</span>: <span class="t-num">-1</span>;
+<span class="ln">32</span>  <span class="t-prop">animation</span>: <span class="t-val">shimmer-spin 3s linear infinite</span>;
+<span class="ln">33</span>  <span class="t-prop">transition</span>: <span class="t-val">opacity 0.4s ease</span>;
+<span class="ln">34</span><span class="t-tag">}</span>
+<span class="ln">35</span>
+<span class="ln">36</span><span class="t-cmt">/* Layer 2: box with sharp gradient border */</span>
+<span class="ln">37</span><span class="t-sel">.chat-box</span> <span class="t-tag">{</span>
+<span class="ln">38</span>  <span class="t-prop">position</span>: <span class="t-val">relative</span>;
+<span class="ln">39</span>  <span class="t-prop">z-index</span>: <span class="t-num">1</span>;
+<span class="ln">40</span>  <span class="t-prop">border-radius</span>: <span class="t-num">12px</span>;
+<span class="ln">41</span>  <span class="t-prop">border</span>: <span class="t-num">2px</span> <span class="t-val">solid transparent</span>;
+<span class="ln">42</span>  <span class="t-prop">background-image</span>:
+<span class="ln">43</span>    <span class="t-fn">linear-gradient</span>(<span class="t-num">#fff</span>, <span class="t-num">#fff</span>),
+<span class="ln">44</span>    <span class="t-fn">linear-gradient</span>(<span class="t-num">#EDEDED</span>, <span class="t-num">#EDEDED</span>);
+<span class="ln">45</span>  <span class="t-prop">background-origin</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">46</span>  <span class="t-prop">background-clip</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">47</span><span class="t-tag">}</span>
+<span class="ln">48</span>
+<span class="ln">49</span><span class="t-cmt">/* Active: shimmer ON */</span>
+<span class="ln">50</span><span class="t-sel">.chat-outer.is-active::before</span> <span class="t-tag">{</span>
+<span class="ln">51</span>  <span class="t-prop">opacity</span>: <span class="t-num">0.65</span>;
+<span class="ln">52</span><span class="t-tag">}</span>
+<span class="ln">53</span>
+<span class="ln">54</span><span class="t-sel">.chat-outer.is-active .chat-box</span> <span class="t-tag">{</span>
+<span class="ln">55</span>  <span class="t-prop">background-image</span>:
+<span class="ln">56</span>    <span class="t-fn">linear-gradient</span>(<span class="t-num">#fff</span>, <span class="t-num">#fff</span>),
+<span class="ln">57</span>    <span class="t-fn">conic-gradient</span>(
+<span class="ln">58</span>      <span class="t-val">from var(--shimmer-angle)</span>,
+<span class="ln">59</span>      <span class="t-num">#4F8EFF</span>, <span class="t-num">#A855F7</span>, <span class="t-num">#F472B6</span>, <span class="t-num">#FB7185</span>, <span class="t-num">#4F8EFF</span>
+<span class="ln">60</span>    );
+<span class="ln">61</span>  <span class="t-prop">background-origin</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">62</span>  <span class="t-prop">background-clip</span>: <span class="t-val">padding-box, border-box</span>;
+<span class="ln">63</span>  <span class="t-prop">animation</span>: <span class="t-val">shimmer-spin 3s linear infinite</span>;
+<span class="ln">64</span><span class="t-tag">}</span></pre>
+
+        <!-- JS tab -->
+        <pre class="code-block" id="block-js"
+><span class="ln">1</span><span class="t-sel">const</span> chatOuter = document.<span class="t-fn">querySelector</span>(<span class="t-val">'.chat-outer'</span>);
+<span class="ln">2</span><span class="t-sel">const</span> textarea  = document.<span class="t-fn">querySelector</span>(<span class="t-val">'.chat-textarea'</span>);
+<span class="ln">3</span>
+<span class="ln">4</span>textarea.<span class="t-fn">addEventListener</span>(<span class="t-val">'focus'</span>, () =&gt; {
+<span class="ln">5</span>  chatOuter.classList.<span class="t-fn">add</span>(<span class="t-val">'is-active'</span>);
+<span class="ln">6</span>});
+<span class="ln">7</span>
+<span class="ln">8</span>textarea.<span class="t-fn">addEventListener</span>(<span class="t-val">'blur'</span>, () =&gt; {
+<span class="ln">9</span>  chatOuter.classList.<span class="t-fn">remove</span>(<span class="t-val">'is-active'</span>);
+<span class="ln">10</span>});</pre>
+
+      </div>
+    </div>
+
+    <!-- Right: Playground -->
+    <div class="playground">
+      <div class="playground__header">
+        <span class="playground__label">Preview</span>
+        <span class="playground__hint">Click the input to activate shimmer</span>
+      </div>
+      <div class="playground__stage">
+
+        <!-- Figma layer stack: 8:35 -->
+        <div class="chat-wrap">
+
+          <div class="grey-outline"></div>
+          <div class="gradient-ring"></div>
+
+          <div class="chat-inner">
+              <textarea
+                class="chat-textarea"
+                placeholder="Type your message..."
+                rows="2"
+              ></textarea>
+              <div class="chat-row">
+                <div class="chat-chip">
+                  <span class="chat-chip__label">Research mode</span>
+                  <span class="chat-chip__close">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 2L8 8M8 2L2 8"
+                        stroke="currentColor" stroke-width="1.4"
+                        stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                </div>
+                <button class="chat-send">
+                  <div class="chat-send__icon"></div>
+                </button>
+              </div>
+            </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script src="chat-input.js"></script>
+</body>
+</html>
