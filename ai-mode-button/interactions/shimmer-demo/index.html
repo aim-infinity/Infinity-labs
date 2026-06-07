@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="/interactions/shimmer-demo/" />
+  <title>Shimmer Transition</title>
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset + base                                                         */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8e8f0;
+      --muted: rgba(255,255,255,0.4);
+      --accent: #7b4fff;
+      --flash: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      /* Subtle flash on midpoint — driven by JS setting --flash */
+      transition: background 0.1s ease;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* WebGL canvas — fullscreen overlay, transparent, non-interactive     */
+    /* ------------------------------------------------------------------ */
+    #shimmer-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+      display: block;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Page layout                                                          */
+    /* ------------------------------------------------------------------ */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      padding: 24px;
+    }
+
+    .hero {
+      text-align: center;
+      max-width: 480px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 40%, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Play button                                                          */
+    /* ------------------------------------------------------------------ */
+    #play-btn {
+      position: relative;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      background: none;
+
+      /* Glass-morphism card style */
+      padding: 18px 48px;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+
+      color: var(--text);
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      font-family: inherit;
+
+      /* Glow shadow */
+      box-shadow:
+        0 0 0 0 rgba(123, 79, 255, 0),
+        0 4px 24px rgba(0,0,0,0.4);
+
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.2s ease,
+        background 0.15s ease,
+        border-color 0.15s ease;
+    }
+
+    #play-btn:hover {
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.16);
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 0 0 rgba(123,79,255,0),
+        0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    #play-btn:active {
+      transform: scale(0.97) translateY(0);
+    }
+
+    #play-btn.active {
+      background: rgba(123,79,255,0.12);
+      border-color: rgba(123,79,255,0.35);
+      box-shadow:
+        0 0 28px rgba(123,79,255,0.25),
+        0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Info cards — show the techniques used                               */
+    /* ------------------------------------------------------------------ */
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      max-width: 600px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 180px;
+    }
+
+    .card strong {
+      display: block;
+      color: var(--text);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Footer hint                                                          */
+    /* ------------------------------------------------------------------ */
+    .hint {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.2);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL canvas lives here — fullscreen, z-index 999 -->
+  <canvas id="shimmer-canvas"></canvas>
+
+  <div class="page">
+
+    <div class="hero">
+      <h1>Shimmer Transition</h1>
+      <p>A WebGL iridescent sweep — built from scratch using Gaussian bands,
+         cosine palettes, and Blinn-Phong lighting. No libraries.</p>
+    </div>
+
+    <button id="play-btn">Play Transition</button>
+
+    <div class="cards">
+      <div class="card">
+        <strong>Gaussian Band</strong>
+        exp(−d²·k) — smooth falloff from the crest
+      </div>
+      <div class="card">
+        <strong>Cosine Palette</strong>
+        a + b·cos(2π(c·t+d)) — IQ's colour formula
+      </div>
+      <div class="card">
+        <strong>Surface Normal</strong>
+        Analytic d/dx of the Gaussian drives hue rotation
+      </div>
+      <div class="card">
+        <strong>Blinn-Phong</strong>
+        Fresnel rim + specular catch-light, additive
+      </div>
+      <div class="card">
+        <strong>Wavy Edge</strong>
+        3 sine harmonics — organic, non-periodic feel
+      </div>
+      <div class="card">
+        <strong>6 Palettes</strong>
+        prism · berry · lagoon · citrus · azure · ember
+      </div>
+    </div>
+
+    <p class="hint">Each tap cycles to the next palette &nbsp;·&nbsp; Zero CSS animation &nbsp;·&nbsp; ~200 lines of GLSL</p>
+
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

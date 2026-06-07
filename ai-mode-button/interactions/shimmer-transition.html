@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shimmer Transition · Interactions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shimmer-transition.css" />
+</head>
+<body>
+
+  <!-- Top bar -->
+  <nav class="topbar">
+    <a class="back-btn" href="../index.html">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M9 2.5L4.5 7L9 11.5" stroke="currentColor" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </a>
+    <span class="topbar__sep">/</span>
+    <span class="topbar__crumb">Interactions</span>
+    <span class="topbar__sep">/</span>
+    <span class="topbar__crumb topbar__crumb--active">Shimmer Transition</span>
+  </nav>
+
+  <div class="top-tabs" role="tablist">
+    <button class="top-tab top-tab--active" data-top-tab="explanation" onclick="switchTopTab('explanation')">
+      Explanation
+    </button>
+    <button class="top-tab" data-top-tab="builder" onclick="switchTopTab('builder')">
+      Code + Preview
+    </button>
+  </div>
+
+  <!-- ── Explanation tab ──────────────────────────────── -->
+  <section class="how-it-works view-panel view-panel--active" data-view-panel="explanation">
+    <div class="how-it-works__inner">
+      <h2 class="how-it-works__title">How We Built the Shimmer Transition</h2>
+      <p class="how-it-works__intro">
+        A WebGL iridescent sweep — built from scratch using Gaussian bands, cosine palettes, and Blinn-Phong lighting.
+        No libraries. Zero CSS animation. A GLSL fragment shader runs on the GPU and draws every pixel of the sweep from pure math.
+      </p>
+
+      <article class="how-it-works__step">
+        <h3>🕵️ First: How did we know the colours?</h3>
+        <p>The website glimm.dev ships a public npm package called <code>glimm</code>. NPM is like an App Store for code that developers share publicly. We downloaded it with two commands:</p>
+        <pre class="how-it-works__code"><code>npm pack glimm@latest    # downloads the package as a .tgz zip
+tar xzf glimm-0.1.3.tgz # unzips it</code></pre>
+        <p>Inside that zip was compiled JavaScript with the colour numbers written right there:</p>
+        <pre class="how-it-works__code"><code>prism: { a:[0.46,0.88,0.33], b:[0.6,0.58,0.74], c:[0.5,0.5,0.5], d:[0.54,0.22,0.84] }</code></pre>
+        <p>We didn't guess — we read the published package. 100% legal. The "secret sauce" was publicly downloadable all along. 🙂</p>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🎨 The big idea — what IS the shimmer?</h3>
+        <p>Imagine you have a magic highlighter pen. When you drag it across paper, it leaves a glowing rainbow stripe that shimmers and changes colour as it moves — like a holographic sticker. That's the shimmer transition. When you click a button or link, that rainbow stripe slides across the screen, hides the old page, shows the new page underneath, then fades away.</p>
+        <div class="how-it-works__callout">No CSS. No animation library. Just math drawing pixels one by one using WebGL.</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🖼️ Block 1 — The Canvas Overlay</h3>
+        <p>Imagine your webpage is a painting on a wall. Now imagine someone tapes a sheet of clear glass in front of it. You can still see the painting through the glass and click links on the page — but someone can draw on the glass without touching the painting. That's exactly what <code>&lt;canvas&gt;</code> is.</p>
+        <pre class="how-it-works__code"><code>┌─────────────────────────────┐  ← Browser window
+│   ┌─────────────────────┐   │  ← Your webpage (HTML, text, buttons)
+│   │   Hello World       │   │
+│   │   [Click me]        │   │
+│   └─────────────────────┘   │
+│ ┌───────────────────────┐   │  ← &lt;canvas&gt; (glass sheet ON TOP)
+│ │  transparent / empty  │   │    position: fixed, inset: 0
+│ │  (you see through it) │   │    pointer-events: none
+│ └───────────────────────┘   │    z-index: 999
+└─────────────────────────────┘</code></pre>
+        <table class="how-it-works__table">
+          <thead><tr><th>Setting</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>position: fixed + inset: 0</td><td>Glass fills the entire window</td></tr>
+            <tr><td>pointer-events: none</td><td>Your clicks fall through to the page behind</td></tr>
+            <tr><td>z-index: 999</td><td>Sits above all other page elements</td></tr>
+            <tr><td>alpha: true + premultipliedAlpha: true</td><td>Glass is truly transparent where nothing is drawn</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>📊 Block 2 — The Gaussian Band (the shape of the stripe)</h3>
+        <p>The shimmer band is NOT a rectangle — it has soft edges that fade out smoothly. The shape comes from the Gaussian bell curve — the same curve from maths/statistics class.</p>
+        <pre class="how-it-works__code"><code>Brightness
+   1.0 │           ████
+       │         ██████████
+   0.5 │       ██████████████
+       │     ████████████████████
+   0.0 │──██████████████████████████──→ Position across screen
+              ↑                  ↑
+           left edge          right edge
+           (fades out)        (fades out)
+                └── bright center ──┘</code></pre>
+        <pre class="how-it-works__code"><code>band = exp( −distance² × tightness )</code></pre>
+        <table class="how-it-works__table">
+          <thead><tr><th>Term</th><th>What it means</th></tr></thead>
+          <tbody>
+            <tr><td>distance (d)</td><td>How far this pixel is from the centre line of the band. Centre = 0, far away = 0.5, 1.0 etc.</td></tr>
+            <tr><td>d²</td><td>Squaring makes the curve symmetric and the falloff happen faster</td></tr>
+            <tr><td>tightness (14)</td><td>Higher = narrower band (laser 🔦). Lower = wider band (floodlight)</td></tr>
+            <tr><td>exp(−…)</td><td>exp(0)=1.0 fully bright · exp(-5)=0.007 nearly invisible · exp(-14)=0.000001 black</td></tr>
+          </tbody>
+        </table>
+        <div class="how-it-works__callout">Real life analogy: Shine a torch at a wall in a dark room. Centre is bright white, edges fade gradually — no sharp border. That gradual fade is a Gaussian. 🔦</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>➡️ Block 3 — Moving the Band (the animation)</h3>
+        <p>The band has a position — where its centre currently is on screen. Screen goes from <code>0.0</code> (left edge) to <code>1.0</code> (right edge). The band starts at <code>-0.2</code> (just off the left, invisible) and ends at <code>1.2</code> (just off the right, invisible).</p>
+        <pre class="how-it-works__code"><code>Time:  0ms              550ms             1100ms
+       │                  │                  │
+  -0.2  0.0       0.5        1.0   1.2
+   ├────┼──────────┼──────────┼─────┤
+   ●                                    ← band starts here (invisible)
+              ●                         ← band at midpoint (covers screen)
+                                   ●    ← band ends here (invisible)</code></pre>
+        <pre class="how-it-works__code"><code>pos = −0.2 + progress × 1.4
+// progress = 0.0 → pos = −0.2  (off left edge)
+// progress = 0.5 → pos =  0.5  (dead centre of screen)
+// progress = 1.0 → pos =  1.2  (off right edge)</code></pre>
+        <div class="how-it-works__callout">requestAnimationFrame is the browser saying "hey, time to draw the next frame!" It fires ~60 times per second. Think of it as a movie projector — each frame the band moved a tiny bit right. Played at 60fps your eye sees smooth movement. 🎬</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>〰️ Block 4 — The Wavy Edge</h3>
+        <p>A band with a perfectly straight edge looks like PowerPoint. The real shimmer band has an organic edge — achieved by shifting the band's centre left/right differently at each row using 3 sine waves added together:</p>
+        <pre class="how-it-works__code"><code>wiggle = sin(y ×  6  +  time × 1.3) × 0.020   // wave A: slow + big
+       + sin(y × 13  −  time × 0.9) × 0.012   // wave B: medium speed
+       + sin(y × 21  +  time × 1.7) × 0.006   // wave C: fast + tiny</code></pre>
+        <pre class="how-it-works__code"><code>Wave A alone:    ∿∿∿∿∿∿∿∿∿∿∿∿   (smooth and regular — boring)
+Wave B alone:    ∿∿∿∿∿∿∿∿∿∿∿∿   (regular, faster — still boring)
+Wave C alone:    ∿∿∿∿∿∿∿∿∿∿∿∿   (regular, fastest — still boring)
+                 ─────────────
+All three added: ∿~∿~~∿∿~∿~~∿   (irregular, natural! 🌊)</code></pre>
+        <p>Each wave also has <code>time</code> in it — so the wiggle changes every frame, making the edge feel animated, not frozen.</p>
+        <div class="how-it-works__callout">Ocean analogy: Small ripples + medium swells + big waves all at once. None of them sync up → the water looks endlessly varied. 🌊</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🌈 Block 5 — The Rainbow Colours (the most magical part)</h3>
+        <p>This formula was invented by graphics legend <strong>Inigo Quilez</strong>. It's pure math, freely shared, and it's the heart of the iridescent shimmer.</p>
+        <pre class="how-it-works__code"><code>colour(t) = a + b × cos( 2π × (c × t + d) )</code></pre>
+        <table class="how-it-works__table">
+          <thead><tr><th>Letter</th><th>Name</th><th>What it controls</th><th>Analogy</th></tr></thead>
+          <tbody>
+            <tr><td>a</td><td>Offset</td><td>Shifts the whole wave up or down</td><td>Adjusting brightness in a room</td></tr>
+            <tr><td>b</td><td>Amplitude</td><td>How wide the oscillation swings</td><td>How saturated / vibrant the colours are</td></tr>
+            <tr><td>c</td><td>Frequency</td><td>How many rainbow cycles across t=0→1</td><td>How fast colours change across the band</td></tr>
+            <tr><td>d</td><td>Phase</td><td>Slides the wave left/right</td><td>Which colour you start from</td></tr>
+          </tbody>
+        </table>
+        <p>Each of R, G, B gets its own <code>a, b, c, d</code> values. 14 presets — 6 original + 8 from Figma:</p>
+        <pre class="how-it-works__code"><code>── Original ────────────────────────────────────────────────────────────────
+prism:   a:[0.46,0.88,0.33] b:[0.60,0.58,0.74] c:[0.5,0.5,0.5] d:[0.54,0.22,0.84]
+berry:   a:[0.92,0.36,0.56] b:[0.10,0.14,0.37] c:[0.5,0.5,0.5] d:[0.84,0.11,0.50]
+lagoon:  a:[0.58,0.64,0.52] b:[0.64,0.30,0.50] c:[0.5,0.5,0.5] d:[0.37,0.66,0.89]
+citrus:  a:[0.55,0.61,0.61] b:[0.54,0.41,0.63] c:[0.5,0.5,0.5] d:[0.66,0.92,0.23]
+azure:   a:[0.13,0.61,1.00] b:[0.15,0.14,0.00] c:[0.5,0.5,0.5] d:[0.29,0.98,0.74]
+ember:   a:[0.83,0.61,0.60] b:[0.20,0.41,0.62] c:[0.5,0.5,0.5] d:[0.73,0.05,0.36]
+── From Figma swatches ─────────────────────────────────────────────────────
+crimson: a:[0.50,0.05,0.05] b:[0.40,0.05,0.05] c:[0.5,0.5,0.5] d:[0.00,0.50,0.50]
+galaxy:  a:[0.50,0.10,0.50] b:[0.45,0.10,0.45] c:[0.5,0.5,0.5] d:[0.20,0.50,0.80]
+steel:   a:[0.60,0.64,0.70] b:[0.32,0.33,0.27] c:[0.5,0.5,0.5] d:[0.00,0.00,0.00]
+fuchsia: a:[0.58,0.05,0.48] b:[0.35,0.05,0.35] c:[0.5,0.5,0.5] d:[0.00,0.50,0.50]
+teal:    a:[0.22,0.42,0.38] b:[0.15,0.35,0.30] c:[0.5,0.5,0.5] d:[0.50,0.00,0.20]
+cosmic:  a:[0.47,0.29,0.50] b:[0.47,0.27,0.41] c:[0.5,0.5,0.5] d:[0.50,0.00,0.30]
+sunrise: a:[0.57,0.55,0.23] b:[0.41,0.30,0.22] c:[0.5,0.5,0.5] d:[0.00,0.00,0.50]
+inferno: a:[0.50,0.41,0.31] b:[0.49,0.38,0.18] c:[0.5,0.5,0.5] d:[0.00,0.00,0.00]</code></pre>
+        <p><strong>🔑 The Iridescence Trick — WHY the hue shifts:</strong> The <code>t</code> that drives the hue is computed from the surface normal tilt. The band is treated as a physical hill:</p>
+        <pre class="how-it-works__code"><code>Height
+  │      ╭────╮           ← top of hill (normal points UP → base colour)
+  │   ╭──╯    ╰──╮
+  │───╯            ╰───→  position
+       ↑          ↑
+    left slope  right slope
+    tilts LEFT  tilts RIGHT
+    → hue shift one way  → hue shift other way</code></pre>
+        <div class="how-it-works__callout">This is iridescence — the same reason a holographic sticker changes colour as you tilt it. The geometry changes → the reflection changes → different colours reach your eye. 🌈</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>✨ Block 6 — The Shiny Highlight (Blinn-Phong)</h3>
+        <p>Two physics effects make the band look like real physical foil, not flat colour. Both are <strong>additive</strong> — they add brightness on top of colour, not replace it.</p>
+        <p><strong>Fresnel Effect (rim glow):</strong> Hold a glass window — looking straight at it, it's mostly transparent. Looking from a sharp angle, it glows bright. That's Fresnel. The band's edges tilt away the most → edges glow brightest → luminous rim.</p>
+        <pre class="how-it-works__code"><code>float NdotV   = dot(Normal, ViewDirection)
+float fresnel = pow(1.0 − NdotV, 3.0)
+// NdotV=1.0 (facing you): (1-1)³ = 0  → no glow
+// NdotV=0.0 (sideways):   (1-0)³ = 1  → full glow</code></pre>
+        <p><strong>Specular Highlight (catch-light):</strong> Look at a shiny metal ball — there's always one tiny bright spot where light bounces directly into your eye. Exponent 80 keeps it razor sharp — only the exact crest of the band lights up.</p>
+        <pre class="how-it-works__code"><code>vec3  H     = normalize(LightDir + ViewDir)  // halfway vector
+float NdotH = dot(Normal, H)
+float spec  = pow(NdotH, 80.0)
+// 0.9^80 = 0.00023 → nearly zero everywhere except the exact crest</code></pre>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>⏱️ The Full Animation Timeline</h3>
+        <pre class="how-it-works__code"><code>t = 0ms
+│  Band appears (alpha = 1, position = off left edge)
+│
+│  ← Band sweeps LEFT → RIGHT (1100ms, easeOutQuart)
+│
+t = 550ms  ← MIDPOINT
+│  Page content swaps HERE
+│  (nobody sees it — the band covers the entire screen!)
+│
+t = 1100ms
+│  Band finishes crossing (position = off right edge)
+│  Outro begins: alpha fades 1 → 0 (700ms, easeInOutCubic)
+│
+t = 1800ms
+   Canvas is fully transparent. Done!</code></pre>
+        <div class="how-it-works__callout">Why swap at the midpoint? At 550ms the band covers 100% of the screen — the old page is hidden. The new page can load underneath. Nobody sees the swap — it happens behind the curtain. 🎭</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🔢 Easing Functions — Why Movement Feels Natural</h3>
+        <p>Without easing, the band moves at constant speed — like a robot. Easing functions remap time so movement feels physical:</p>
+        <pre class="how-it-works__code"><code>Linear (no easing):
+Progress │████████████████  ← constant speed, robotic
+    1.0  │
+    0.0  └─────────────────→ time
+
+easeOutQuart (band sweep):
+Progress │          ██████  ← slows down at end (like a car braking)
+    1.0  │      ████
+    0.0  └─────────────────→ time
+
+easeInOutCubic (fade out):
+Progress │     ████████     ← slow start, fast middle, slow end (like a breath)
+    1.0  │   ██        ██
+    0.0  └─────────────────→ time</code></pre>
+        <pre class="how-it-works__code"><code>easeOutQuart   = p => 1 − (1 − p)⁴        // fast start, gentle stop
+easeInOutCubic = p => p &lt; 0.5             // symmetric S-curve
+               ? 4p³
+               : 1 − (−2p + 2)³ / 2</code></pre>
+        <div class="how-it-works__callout">Without easing → looks like a PowerPoint slide 😬 · With easing → feels like iOS, feels physical 😍</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>📦 The 4 Files — What Each Does</h3>
+        <pre class="how-it-works__code"><code>shimmer-transition/
+├── index.html        ← canvas overlay + page layout + styles
+└── src/
+    ├── palettes.js   ← 14 colour recipes (just data, no logic)
+    ├── sweep.js      ← animation timer: phase 1 sweep + phase 2 fade
+    ├── shader.js     ← WebGL setup + the GLSL fragment shader
+    └── main.js       ← connects button click → sweep plays</code></pre>
+        <table class="how-it-works__table">
+          <thead><tr><th>File</th><th>Difficulty</th><th>Lines</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>palettes.js</td><td>⭐ Easy</td><td>40</td><td>14 colour recipes (6 original + 8 from Figma) — just data, no logic</td></tr>
+            <tr><td>main.js</td><td>⭐ Easy</td><td>57</td><td>Wires button click → palette cycle → playSweep</td></tr>
+            <tr><td>sweep.js</td><td>⭐⭐ Medium</td><td>96</td><td>Animation timer: phase 1 sweep + phase 2 fade</td></tr>
+            <tr><td>shader.js</td><td>⭐⭐⭐ Hard</td><td>271</td><td>WebGL setup + the full GLSL fragment shader</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🤔 Why WebGL and Not Just CSS?</h3>
+        <p>CSS animations can do: fades, slides, scales, rotations, blurs. CSS animations <strong>cannot</strong> do:</p>
+        <pre class="how-it-works__code"><code>✗  Run a custom math formula per pixel (millions of calculations per frame)
+✗  Synthesize a surface normal from a mathematical function
+✗  Compute Fresnel or specular lighting
+✗  Make iridescent colour shifts driven by geometry</code></pre>
+        <div class="how-it-works__callout">For any effect that needs per-pixel custom maths, you need a GPU shader (WebGL or WebGPU). This shimmer effect is literally impossible in CSS. That's the whole reason WebGL exists.</div>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🔑 Key Terms Glossary</h3>
+        <table class="how-it-works__table">
+          <thead><tr><th>Term</th><th>Plain English</th></tr></thead>
+          <tbody>
+            <tr><td>WebGL</td><td>A way to run GPU code from your browser. Lets you draw anything mathematically.</td></tr>
+            <tr><td>GLSL</td><td>The programming language used to write GPU shaders. Runs on the graphics card.</td></tr>
+            <tr><td>Fragment shader</td><td>A small program that runs once for every single pixel, deciding its colour.</td></tr>
+            <tr><td>Uniform</td><td>A variable you send FROM JavaScript TO the shader (like uProgress, uTime).</td></tr>
+            <tr><td>Gaussian</td><td>The bell curve shape: exp(−x²). Peaks at 1, fades smoothly to 0.</td></tr>
+            <tr><td>Surface normal</td><td>An arrow pointing straight out of a surface. Used for lighting calculations.</td></tr>
+            <tr><td>Iridescence</td><td>Colour that shifts as you change viewing angle. Like a holographic sticker.</td></tr>
+            <tr><td>Fresnel</td><td>More reflection at grazing angles. Why glass looks reflective from the side.</td></tr>
+            <tr><td>Cosine palette</td><td>IQ's formula: a + b·cos(2π(ct+d)). Makes smooth, looping colour gradients.</td></tr>
+            <tr><td>easeOutQuart</td><td>1−(1−p)⁴ — starts fast, decelerates. Feels like natural motion.</td></tr>
+            <tr><td>requestAnimationFrame</td><td>Browser calls your draw function ~60×/sec. The animation heartbeat.</td></tr>
+            <tr><td>premultiplied alpha</td><td>A way of storing colour+transparency together that blends correctly in WebGL.</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="how-it-works__step">
+        <h3>🎨 How to Add Your Own Custom Colour Palette</h3>
+        <p>You only need to touch <strong>one file</strong> — <code>palettes.js</code>. The dots, the cycling, and the shader all pick it up automatically. Here's a worked example building a <strong>"mint"</strong> palette — soft white → deep teal.</p>
+
+        <p><strong>Step 1 — Pick two "pole" colours</strong></p>
+        <p>With <code>c = [0.5, 0.5, 0.5]</code> (the standard value), the palette oscillates between two poles: one at <code>t = 0</code> and one at <code>t = 0.5</code>. Pick the two colours you want at those two ends:</p>
+        <pre class="how-it-works__code"><code>Pole A (t = 0)   → soft white-green:  R=0.90  G=1.00  B=0.90
+Pole B (t = 0.5) → deep teal:         R=0.10  G=0.50  B=0.50</code></pre>
+
+        <p><strong>Step 2 — Compute <code>a</code> and <code>b</code></strong></p>
+        <p>Two formulas, one per channel. Do this for R, G, and B separately:</p>
+        <pre class="how-it-works__code"><code>a  =  (Pole A  +  Pole B) / 2     ← the midpoint between the two colours
+b  =  (Pole A  −  Pole B) / 2     ← half the distance (the swing size)
+
+── R channel ─────────────────────────────────────────────
+a_r  =  (0.90 + 0.10) / 2  =  0.50
+b_r  =  (0.90 − 0.10) / 2  =  0.40
+
+── G channel ─────────────────────────────────────────────
+a_g  =  (1.00 + 0.50) / 2  =  0.75
+b_g  =  (1.00 − 0.50) / 2  =  0.25
+
+── B channel ─────────────────────────────────────────────
+a_b  =  (0.90 + 0.50) / 2  =  0.70
+b_b  =  (0.90 − 0.50) / 2  =  0.20</code></pre>
+
+        <p><strong>Step 3 — Choose <code>c</code> and <code>d</code></strong></p>
+        <pre class="how-it-works__code"><code>c = [0.5, 0.5, 0.5]   ← always keep this — gives one smooth cycle across the band
+d = [0.0, 0.0, 0.0]   ← start from Pole A at t=0. Nudge any channel to shift the hue.</code></pre>
+
+        <p><strong>Step 4 — Verify mentally</strong></p>
+        <pre class="how-it-works__code"><code>At t = 0.00 → a + b·cos(0)  = a + b = [0.90, 1.00, 0.90]  ✓ soft white-green
+At t = 0.25 → a + b·cos(π/2) = a     = [0.50, 0.75, 0.70]  ✓ mid mint
+At t = 0.50 → a + b·cos(π)  = a − b = [0.10, 0.50, 0.50]  ✓ deep teal
+At t = 1.00 → a + b·cos(2π) = a + b = [0.90, 1.00, 0.90]  ✓ loops back</code></pre>
+
+        <p><strong>Step 5 — Add one line to <code>palettes.js</code></strong></p>
+        <pre class="how-it-works__code"><code>export const PALETTES = {
+  prism:   { a:[0.46,0.88,0.33], b:[0.60,0.58,0.74], c:[0.5,0.5,0.5], d:[0.54,0.22,0.84] },
+  // ... other palettes ...
+
+  // 👇 Add your new palette here — pick any name
+  mint:    { a:[0.50,0.75,0.70], b:[0.40,0.25,0.20], c:[0.5,0.5,0.5], d:[0.00,0.00,0.00] },
+}</code></pre>
+
+        <div class="how-it-works__callout">That's it. No changes needed anywhere else. The dot gets generated automatically with the correct gradient (computed from the same formula), the name appears in the header, and it joins the cycle.</div>
+
+        <p><strong>Tweaking tips:</strong></p>
+        <pre class="how-it-works__code"><code>Want richer, more saturated colours?  → increase b values (try 0.5–0.6)
+Want softer, pastel tones?            → decrease b values (try 0.1–0.2)
+Want to shift the starting hue?       → nudge d values (0.25 = quarter turn, 0.5 = flip)
+Want faster colour cycling?           → increase c values (try 1.0 for two full cycles)
+Want a monochrome (single colour)?    → set b_r=b_g=b_b to the same value, same for d</code></pre>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ── Code + Preview tab ───────────────────────────── -->
+  <div class="split view-panel" data-view-panel="builder">
+
+    <!-- Left: Code -->
+    <div class="code-panel">
+      <div class="code-panel__header">
+        <div class="code-panel__tabs">
+          <button class="code-tab code-tab--active" data-tab="html"       onclick="switchTab('html')">HTML</button>
+          <button class="code-tab"                  data-tab="mainjs"    onclick="switchTab('mainjs')">main.js</button>
+          <button class="code-tab"                  data-tab="shaderjs"  onclick="switchTab('shaderjs')">shader.js</button>
+          <button class="code-tab"                  data-tab="sweepjs"   onclick="switchTab('sweepjs')">sweep.js</button>
+          <button class="code-tab"                  data-tab="palettesjs" onclick="switchTab('palettesjs')">palettes.js</button>
+        </div>
+        <button class="copy-btn" id="copyBtn" onclick="copyCode()">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="4.5" y="4.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M3 8.5H2C1.45 8.5 1 8.05 1 7.5V2C1 1.45 1.45 1 2 1H7.5C8.05 1 8.5 1.45 8.5 2V3"
+              stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          Copy
+        </button>
+      </div>
+      <div class="code-panel__body">
+
+        <!-- HTML tab -->
+        <pre class="code-block code-block--active" id="block-html"
+><span class="ln"> 1</span><span class="t-cmt">&lt;!-- Glass overlay — sits above the page --&gt;</span>
+<span class="ln"> 2</span><span class="t-tag">&lt;canvas</span> <span class="t-attr">id</span>=<span class="t-val">"shimmer-canvas"</span><span class="t-tag">&gt;&lt;/canvas&gt;</span>
+<span class="ln"> 3</span>
+<span class="ln"> 4</span><span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"page"</span><span class="t-tag">&gt;</span>
+<span class="ln"> 5</span>  <span class="t-tag">&lt;div</span> <span class="t-attr">class</span>=<span class="t-val">"hero"</span><span class="t-tag">&gt;</span>
+<span class="ln"> 6</span>    <span class="t-tag">&lt;h1&gt;</span>Shimmer Transition<span class="t-tag">&lt;/h1&gt;</span>
+<span class="ln"> 7</span>    <span class="t-tag">&lt;p&gt;</span>WebGL iridescent sweep — no libraries.<span class="t-tag">&lt;/p&gt;</span>
+<span class="ln"> 8</span>  <span class="t-tag">&lt;/div&gt;</span>
+<span class="ln"> 9</span>
+<span class="ln">10</span>  <span class="t-tag">&lt;button</span> <span class="t-attr">id</span>=<span class="t-val">"play-btn"</span><span class="t-tag">&gt;</span>Play Transition<span class="t-tag">&lt;/button&gt;</span>
+<span class="ln">11</span><span class="t-tag">&lt;/div&gt;</span>
+<span class="ln">12</span>
+<span class="ln">13</span><span class="t-cmt">&lt;!-- ES module — imports shader.js, sweep.js, palettes.js --&gt;</span>
+<span class="ln">14</span><span class="t-tag">&lt;script</span> <span class="t-attr">type</span>=<span class="t-val">"module"</span> <span class="t-attr">src</span>=<span class="t-val">"src/main.js"</span><span class="t-tag">&gt;&lt;/script&gt;</span></pre>
+
+        <!-- main.js tab -->
+        <pre class="code-block" id="block-mainjs"
+><span class="ln"> 1</span><span class="t-kw">import</span> { <span class="t-sel">createShader</span> } <span class="t-kw">from</span> <span class="t-str">'./shader.js'</span>
+<span class="ln"> 2</span><span class="t-kw">import</span> { <span class="t-sel">playSweep</span> }    <span class="t-kw">from</span> <span class="t-str">'./sweep.js'</span>
+<span class="ln"> 3</span><span class="t-kw">import</span> { <span class="t-sel">PALETTES</span> }     <span class="t-kw">from</span> <span class="t-str">'./palettes.js'</span>
+<span class="ln"> 4</span>
+<span class="ln"> 5</span><span class="t-kw">const</span> canvas = document.<span class="t-fn">getElementById</span>(<span class="t-str">'shimmer-canvas'</span>)
+<span class="ln"> 6</span><span class="t-kw">const</span> btn    = document.<span class="t-fn">getElementById</span>(<span class="t-str">'play-btn'</span>)
+<span class="ln"> 7</span><span class="t-kw">const</span> ctrl   = <span class="t-fn">createShader</span>(canvas, { palette: <span class="t-str">'prism'</span> })
+<span class="ln"> 8</span>
+<span class="ln"> 9</span><span class="t-kw">const</span> paletteNames = Object.<span class="t-fn">keys</span>(PALETTES)
+<span class="ln">10</span><span class="t-kw">let</span>   paletteIndex = <span class="t-num">0</span>
+<span class="ln">11</span><span class="t-kw">let</span>   activeSweep  = <span class="t-kw">null</span>
+<span class="ln">12</span>
+<span class="ln">13</span>btn.<span class="t-fn">addEventListener</span>(<span class="t-str">'click'</span>, () =&gt; {
+<span class="ln">14</span>  <span class="t-kw">if</span> (!ctrl) <span class="t-kw">return</span>
+<span class="ln">15</span>
+<span class="ln">16</span>  <span class="t-cmt">// Cancel any in-progress sweep so a double-tap restarts</span>
+<span class="ln">17</span>  activeSweep?.<span class="t-fn">cancel</span>()
+<span class="ln">18</span>
+<span class="ln">19</span>  <span class="t-cmt">// Cycle through palettes on each tap</span>
+<span class="ln">20</span>  <span class="t-kw">const</span> name = paletteNames[paletteIndex++ % paletteNames.length]
+<span class="ln">21</span>  ctrl.<span class="t-fn">setPalette</span>(name)
+<span class="ln">22</span>  btn.textContent = <span class="t-str">`✦ <span class="t-sel">${name}</span>`</span>
+<span class="ln">23</span>  btn.classList.<span class="t-fn">add</span>(<span class="t-str">'active'</span>)
+<span class="ln">24</span>
+<span class="ln">25</span>  activeSweep = <span class="t-fn">playSweep</span>(ctrl, {
+<span class="ln">26</span>    onMidpoint: () =&gt; { <span class="t-cmt">/* swap page content here */</span> },
+<span class="ln">27</span>    onComplete: () =&gt; {
+<span class="ln">28</span>      btn.textContent = <span class="t-str">'Play Transition'</span>
+<span class="ln">29</span>      btn.classList.<span class="t-fn">remove</span>(<span class="t-str">'active'</span>)
+<span class="ln">30</span>      activeSweep = <span class="t-kw">null</span>
+<span class="ln">31</span>    },
+<span class="ln">32</span>  })
+<span class="ln">33</span>})</pre>
+
+        <!-- shader.js tab -->
+        <pre class="code-block" id="block-shaderjs"
+><span class="ln"> 1</span><span class="t-cmt">// Fragment shader — this runs on the GPU for every pixel</span>
+<span class="ln"> 2</span><span class="t-prop">precision</span> <span class="t-val">mediump</span> <span class="t-prop">float</span>;
+<span class="ln"> 3</span>
+<span class="ln"> 4</span><span class="t-kw">uniform</span> <span class="t-prop">vec2</span>  uRes;       <span class="t-cmt">// canvas size in pixels</span>
+<span class="ln"> 5</span><span class="t-kw">uniform</span> <span class="t-prop">float</span> uTime;      <span class="t-cmt">// elapsed seconds</span>
+<span class="ln"> 6</span><span class="t-kw">uniform</span> <span class="t-prop">float</span> uProgress;  <span class="t-cmt">// band travel 0 → 1</span>
+<span class="ln"> 7</span><span class="t-kw">uniform</span> <span class="t-prop">float</span> uAlpha;     <span class="t-cmt">// outro fade</span>
+<span class="ln"> 8</span><span class="t-kw">uniform</span> <span class="t-prop">vec3</span>  uPalA, uPalB, uPalC, uPalD; <span class="t-cmt">// palette</span>
+<span class="ln"> 9</span>
+<span class="ln">10</span><span class="t-sel">vec3</span> <span class="t-fn">pal</span>(<span class="t-prop">float</span> t, <span class="t-prop">vec3</span> a, <span class="t-prop">vec3</span> b, <span class="t-prop">vec3</span> c, <span class="t-prop">vec3</span> d) {
+<span class="ln">11</span>  <span class="t-kw">return</span> a + b * <span class="t-fn">cos</span>(<span class="t-num">2.0</span> * PI * (c * t + d)); <span class="t-cmt">// IQ palette</span>
+<span class="ln">12</span>}
+<span class="ln">13</span>
+<span class="ln">14</span><span class="t-kw">void</span> <span class="t-fn">main</span>() {
+<span class="ln">15</span>  <span class="t-prop">vec2</span> uv = gl_FragCoord.xy / uRes;
+<span class="ln">16</span>
+<span class="ln">17</span>  <span class="t-cmt">// Band position (-0.2 → 1.2 across the screen)</span>
+<span class="ln">18</span>  <span class="t-prop">float</span> pos = <span class="t-num">-0.2</span> + uProgress * <span class="t-num">1.4</span>;
+<span class="ln">19</span>
+<span class="ln">20</span>  <span class="t-cmt">// Wavy edge — 3 sine harmonics superimposed</span>
+<span class="ln">21</span>  <span class="t-prop">float</span> wave = <span class="t-fn">sin</span>(uv.y * <span class="t-num">6.0</span>  + uTime * <span class="t-num">1.30</span>) * <span class="t-num">0.020</span>
+<span class="ln">22</span>             + <span class="t-fn">sin</span>(uv.y * <span class="t-num">13.0</span> - uTime * <span class="t-num">0.90</span>) * <span class="t-num">0.012</span>
+<span class="ln">23</span>             + <span class="t-fn">sin</span>(uv.y * <span class="t-num">21.0</span> + uTime * <span class="t-num">1.70</span>) * <span class="t-num">0.006</span>;
+<span class="ln">24</span>
+<span class="ln">25</span>  <span class="t-cmt">// Gaussian band — smooth bell curve falloff from centre</span>
+<span class="ln">26</span>  <span class="t-prop">float</span> d    = (uv.x - pos) - wave;
+<span class="ln">27</span>  <span class="t-prop">float</span> band = <span class="t-fn">exp</span>(-d * d * uBandTight);
+<span class="ln">28</span>
+<span class="ln">29</span>  <span class="t-cmt">// Surface normal — analytic slope of the Gaussian hill</span>
+<span class="ln">30</span>  <span class="t-prop">float</span> slope = <span class="t-num">-2.0</span> * d * uBandTight * band;
+<span class="ln">31</span>  <span class="t-prop">vec3</span>  N     = <span class="t-fn">normalize</span>(<span class="t-fn">vec3</span>(-slope * <span class="t-num">0.18</span>, <span class="t-num">0.0</span>, <span class="t-num">1.0</span>));
+<span class="ln">32</span>
+<span class="ln">33</span>  <span class="t-cmt">// Iridescence — hue driven by normal tilt + position + time</span>
+<span class="ln">34</span>  <span class="t-prop">float</span> t = N.x * <span class="t-num">0.45</span> + uv.x * <span class="t-num">1.40</span> + uTime * <span class="t-num">0.04</span>;
+<span class="ln">35</span>  <span class="t-prop">vec3</span>  col = <span class="t-fn">pal</span>(t, uPalA, uPalB, uPalC, uPalD);
+<span class="ln">36</span>
+<span class="ln">37</span>  <span class="t-cmt">// Blinn-Phong — Fresnel rim + specular catch-light (additive)</span>
+<span class="ln">38</span>  <span class="t-prop">float</span> fresnel = <span class="t-fn">pow</span>(<span class="t-num">1.0</span> - <span class="t-fn">dot</span>(N, V), <span class="t-num">3.0</span>);
+<span class="ln">39</span>  <span class="t-prop">float</span> spec    = <span class="t-fn">pow</span>(<span class="t-fn">dot</span>(<span class="t-fn">normalize</span>(L + V), N), <span class="t-num">80.0</span>);
+<span class="ln">40</span>
+<span class="ln">41</span>  <span class="t-prop">float</span> a = band * uAlpha;
+<span class="ln">42</span>  gl_FragColor = <span class="t-fn">vec4</span>(col * a + (col * fresnel * <span class="t-num">0.55</span>
+<span class="ln">43</span>                   + <span class="t-fn">vec3</span>(spec) * <span class="t-num">1.1</span>) * a,
+<span class="ln">44</span>                   <span class="t-fn">min</span>(a + (fresnel * <span class="t-num">0.4</span> + spec * <span class="t-num">0.9</span>) * a, <span class="t-num">1.0</span>));
+<span class="ln">45</span>}</pre>
+
+        <!-- sweep.js tab -->
+        <pre class="code-block" id="block-sweepjs"
+><span class="ln"> 1</span><span class="t-cmt">// Animation orchestrator — two phases</span>
+<span class="ln"> 2</span><span class="t-cmt">// Phase 1: sweep band left→right (1100ms, easeOutQuart)</span>
+<span class="ln"> 3</span><span class="t-cmt">// Phase 2: fade alpha 1→0 (700ms, easeInOutCubic)</span>
+<span class="ln"> 4</span>
+<span class="ln"> 5</span><span class="t-kw">const</span> <span class="t-fn">easeOutQuart</span>   = p =&gt; <span class="t-num">1</span> - Math.<span class="t-fn">pow</span>(<span class="t-num">1</span> - p, <span class="t-num">4</span>)
+<span class="ln"> 6</span><span class="t-kw">const</span> <span class="t-fn">easeInOutCubic</span> = p =&gt; p &lt; <span class="t-num">0.5</span>
+<span class="ln"> 7</span>  ? <span class="t-num">4</span> * p * p * p
+<span class="ln"> 8</span>  : <span class="t-num">1</span> - Math.<span class="t-fn">pow</span>(-<span class="t-num">2</span> * p + <span class="t-num">2</span>, <span class="t-num">3</span>) / <span class="t-num">2</span>
+<span class="ln"> 9</span>
+<span class="ln">10</span><span class="t-kw">export function</span> <span class="t-fn">playSweep</span>(ctrl, opts = {}) {
+<span class="ln">11</span>  <span class="t-kw">const</span> sweepMs  = opts.sweepMs  ?? <span class="t-num">1100</span>
+<span class="ln">12</span>  <span class="t-kw">const</span> outroMs  = opts.outroMs  ?? <span class="t-num">700</span>
+<span class="ln">13</span>  <span class="t-kw">const</span> midpoint = opts.midpoint ?? <span class="t-num">0.5</span>
+<span class="ln">14</span>  <span class="t-kw">let</span> cancelled = <span class="t-kw">false</span>
+<span class="ln">15</span>
+<span class="ln">16</span>  ;(<span class="t-kw">async</span> () =&gt; {
+<span class="ln">17</span>    ctrl.<span class="t-fn">setAlpha</span>(<span class="t-num">1</span>)
+<span class="ln">18</span>    ctrl.<span class="t-fn">setProgress</span>(<span class="t-num">0</span>)
+<span class="ln">19</span>
+<span class="ln">20</span>    <span class="t-cmt">// Phase 1 — sweep</span>
+<span class="ln">21</span>    <span class="t-kw">let</span> midFired = <span class="t-kw">false</span>
+<span class="ln">22</span>    <span class="t-kw">const</span> t0 = performance.<span class="t-fn">now</span>()
+<span class="ln">23</span>    <span class="t-kw">await new</span> <span class="t-fn">Promise</span>(resolve =&gt; {
+<span class="ln">24</span>      <span class="t-kw">const</span> tick = () =&gt; {
+<span class="ln">25</span>        <span class="t-kw">if</span> (cancelled) { <span class="t-fn">resolve</span>(); <span class="t-kw">return</span> }
+<span class="ln">26</span>        <span class="t-kw">const</span> raw      = Math.<span class="t-fn">min</span>(<span class="t-num">1</span>, (performance.<span class="t-fn">now</span>() - t0) / sweepMs)
+<span class="ln">27</span>        <span class="t-kw">const</span> progress = <span class="t-fn">easeOutQuart</span>(raw)
+<span class="ln">28</span>        ctrl.<span class="t-fn">setProgress</span>(progress)
+<span class="ln">29</span>        <span class="t-kw">if</span> (!midFired &amp;&amp; progress &gt;= midpoint) {
+<span class="ln">30</span>          midFired = <span class="t-kw">true</span>
+<span class="ln">31</span>          opts.onMidpoint?.()   <span class="t-cmt">// ← swap page content here</span>
+<span class="ln">32</span>        }
+<span class="ln">33</span>        <span class="t-kw">if</span> (raw &lt; <span class="t-num">1</span>) <span class="t-fn">requestAnimationFrame</span>(tick)
+<span class="ln">34</span>        <span class="t-kw">else</span> <span class="t-fn">resolve</span>()
+<span class="ln">35</span>      }
+<span class="ln">36</span>      <span class="t-fn">requestAnimationFrame</span>(tick)
+<span class="ln">37</span>    })
+<span class="ln">38</span>
+<span class="ln">39</span>    <span class="t-cmt">// Phase 2 — fade out</span>
+<span class="ln">40</span>    <span class="t-kw">const</span> t1 = performance.<span class="t-fn">now</span>()
+<span class="ln">41</span>    <span class="t-kw">await new</span> <span class="t-fn">Promise</span>(resolve =&gt; {
+<span class="ln">42</span>      <span class="t-kw">const</span> tick = () =&gt; {
+<span class="ln">43</span>        <span class="t-kw">if</span> (cancelled) { <span class="t-fn">resolve</span>(); <span class="t-kw">return</span> }
+<span class="ln">44</span>        <span class="t-kw">const</span> raw = Math.<span class="t-fn">min</span>(<span class="t-num">1</span>, (performance.<span class="t-fn">now</span>() - t1) / outroMs)
+<span class="ln">45</span>        ctrl.<span class="t-fn">setAlpha</span>(<span class="t-num">1</span> - <span class="t-fn">easeInOutCubic</span>(raw))
+<span class="ln">46</span>        <span class="t-kw">if</span> (raw &lt; <span class="t-num">1</span>) <span class="t-fn">requestAnimationFrame</span>(tick)
+<span class="ln">47</span>        <span class="t-kw">else</span> <span class="t-fn">resolve</span>()
+<span class="ln">48</span>      }
+<span class="ln">49</span>      <span class="t-fn">requestAnimationFrame</span>(tick)
+<span class="ln">50</span>    })
+<span class="ln">51</span>
+<span class="ln">52</span>    opts.onComplete?.()
+<span class="ln">53</span>  })()
+<span class="ln">54</span>
+<span class="ln">55</span>  <span class="t-kw">return</span> { cancel: () =&gt; { cancelled = <span class="t-kw">true</span> } }
+<span class="ln">56</span>}</pre>
+
+        <!-- palettes.js tab -->
+        <pre class="code-block" id="block-palettesjs"
+><span class="ln"> 1</span><span class="t-cmt">// Cosine palette formula by Inigo Quilez — public domain</span>
+<span class="ln"> 2</span><span class="t-cmt">// color(t) = a + b * cos( 2π * (c*t + d) )</span>
+<span class="ln"> 3</span><span class="t-cmt">// Original 6 from glimm npm · New 8 derived from Figma swatches</span>
+<span class="ln"> 4</span>
+<span class="ln"> 5</span><span class="t-kw">export const</span> PALETTES = {
+<span class="ln"> 6</span>  <span class="t-cmt">// ── Original 6 ──────────────────────────────────────────────────────────</span>
+<span class="ln"> 7</span>  prism:   { a:[<span class="t-num">0.46</span>,<span class="t-num">0.88</span>,<span class="t-num">0.33</span>], b:[<span class="t-num">0.60</span>,<span class="t-num">0.58</span>,<span class="t-num">0.74</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.54</span>,<span class="t-num">0.22</span>,<span class="t-num">0.84</span>] },
+<span class="ln"> 8</span>  berry:   { a:[<span class="t-num">0.92</span>,<span class="t-num">0.36</span>,<span class="t-num">0.56</span>], b:[<span class="t-num">0.10</span>,<span class="t-num">0.14</span>,<span class="t-num">0.37</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.84</span>,<span class="t-num">0.11</span>,<span class="t-num">0.50</span>] },
+<span class="ln"> 9</span>  lagoon:  { a:[<span class="t-num">0.58</span>,<span class="t-num">0.64</span>,<span class="t-num">0.52</span>], b:[<span class="t-num">0.64</span>,<span class="t-num">0.30</span>,<span class="t-num">0.50</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.37</span>,<span class="t-num">0.66</span>,<span class="t-num">0.89</span>] },
+<span class="ln">10</span>  citrus:  { a:[<span class="t-num">0.55</span>,<span class="t-num">0.61</span>,<span class="t-num">0.61</span>], b:[<span class="t-num">0.54</span>,<span class="t-num">0.41</span>,<span class="t-num">0.63</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.66</span>,<span class="t-num">0.92</span>,<span class="t-num">0.23</span>] },
+<span class="ln">11</span>  azure:   { a:[<span class="t-num">0.13</span>,<span class="t-num">0.61</span>,<span class="t-num">1.00</span>], b:[<span class="t-num">0.15</span>,<span class="t-num">0.14</span>,<span class="t-num">0.00</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.29</span>,<span class="t-num">0.98</span>,<span class="t-num">0.74</span>] },
+<span class="ln">12</span>  ember:   { a:[<span class="t-num">0.83</span>,<span class="t-num">0.61</span>,<span class="t-num">0.60</span>], b:[<span class="t-num">0.20</span>,<span class="t-num">0.41</span>,<span class="t-num">0.62</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.73</span>,<span class="t-num">0.05</span>,<span class="t-num">0.36</span>] },
+<span class="ln">13</span>  <span class="t-cmt">// ── From Figma swatches ──────────────────────────────────────────────────</span>
+<span class="ln">14</span>  crimson: { a:[<span class="t-num">0.50</span>,<span class="t-num">0.05</span>,<span class="t-num">0.05</span>], b:[<span class="t-num">0.40</span>,<span class="t-num">0.05</span>,<span class="t-num">0.05</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.00</span>,<span class="t-num">0.50</span>,<span class="t-num">0.50</span>] },
+<span class="ln">15</span>  galaxy:  { a:[<span class="t-num">0.50</span>,<span class="t-num">0.10</span>,<span class="t-num">0.50</span>], b:[<span class="t-num">0.45</span>,<span class="t-num">0.10</span>,<span class="t-num">0.45</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.20</span>,<span class="t-num">0.50</span>,<span class="t-num">0.80</span>] },
+<span class="ln">16</span>  steel:   { a:[<span class="t-num">0.60</span>,<span class="t-num">0.64</span>,<span class="t-num">0.70</span>], b:[<span class="t-num">0.32</span>,<span class="t-num">0.33</span>,<span class="t-num">0.27</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.00</span>,<span class="t-num">0.00</span>,<span class="t-num">0.00</span>] },
+<span class="ln">17</span>  fuchsia: { a:[<span class="t-num">0.58</span>,<span class="t-num">0.05</span>,<span class="t-num">0.48</span>], b:[<span class="t-num">0.35</span>,<span class="t-num">0.05</span>,<span class="t-num">0.35</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.00</span>,<span class="t-num">0.50</span>,<span class="t-num">0.50</span>] },
+<span class="ln">18</span>  teal:    { a:[<span class="t-num">0.22</span>,<span class="t-num">0.42</span>,<span class="t-num">0.38</span>], b:[<span class="t-num">0.15</span>,<span class="t-num">0.35</span>,<span class="t-num">0.30</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.50</span>,<span class="t-num">0.00</span>,<span class="t-num">0.20</span>] },
+<span class="ln">19</span>  cosmic:  { a:[<span class="t-num">0.47</span>,<span class="t-num">0.29</span>,<span class="t-num">0.50</span>], b:[<span class="t-num">0.47</span>,<span class="t-num">0.27</span>,<span class="t-num">0.41</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.50</span>,<span class="t-num">0.00</span>,<span class="t-num">0.30</span>] },
+<span class="ln">20</span>  sunrise: { a:[<span class="t-num">0.57</span>,<span class="t-num">0.55</span>,<span class="t-num">0.23</span>], b:[<span class="t-num">0.41</span>,<span class="t-num">0.30</span>,<span class="t-num">0.22</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.00</span>,<span class="t-num">0.00</span>,<span class="t-num">0.50</span>] },
+<span class="ln">21</span>  inferno: { a:[<span class="t-num">0.50</span>,<span class="t-num">0.41</span>,<span class="t-num">0.31</span>], b:[<span class="t-num">0.49</span>,<span class="t-num">0.38</span>,<span class="t-num">0.18</span>], c:[<span class="t-num">0.5</span>,<span class="t-num">0.5</span>,<span class="t-num">0.5</span>], d:[<span class="t-num">0.00</span>,<span class="t-num">0.00</span>,<span class="t-num">0.00</span>] },
+<span class="ln">22</span>}
+<span class="ln">23</span>
+<span class="ln">14</span><span class="t-kw">export function</span> <span class="t-fn">resolvePalette</span>(p) {
+<span class="ln">15</span>  <span class="t-kw">if</span> (!p) <span class="t-kw">return</span> PALETTES.prism
+<span class="ln">16</span>  <span class="t-kw">if</span> (<span class="t-kw">typeof</span> p === <span class="t-str">'string'</span>) <span class="t-kw">return</span> PALETTES[p] ?? PALETTES.prism
+<span class="ln">17</span>  <span class="t-kw">return</span> p
+<span class="ln">18</span>}</pre>
+
+      </div>
+    </div>
+
+    <!-- Right: WebGL preview — canvas lives directly in the stage -->
+    <div class="playground">
+      <div class="playground__header">
+        <span class="playground__label">Preview</span>
+        <span class="playground__palette-name" id="palette-name-display">✦ prism</span>
+      </div>
+      <div class="playground__stage">
+        <canvas id="shimmer-canvas"></canvas>
+        <div class="shimmer-ui">
+          <div class="shimmer-controls">
+            <div class="palette-dots" id="palette-dots"></div>
+            <button id="play-btn">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M3 2L11 6.5L3 11V2Z" fill="currentColor"/>
+              </svg>
+              Preview
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="shimmer-transition.js"></script>
+  <script type="module" src="shimmer-demo/src/main.js"></script>
+</body>
+</html>
